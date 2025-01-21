@@ -16,12 +16,16 @@
 
 package com.example.android.guesstheword.screens.game
 
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.text.format.DateUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.getSystemService
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
@@ -37,7 +41,7 @@ class GameFragment : Fragment() {
 
    private lateinit var viewModel: GameViewModel
 
-    // The current word
+
 
 
     private lateinit var binding: GameFragmentBinding
@@ -57,14 +61,7 @@ class GameFragment : Fragment() {
         viewModel = ViewModelProviders.of(this).get(GameViewModel::class.java)
 
         binding.gameViewModel = viewModel
-
-
-        viewModel.score.observe(viewLifecycleOwner, Observer { newScore ->
-            binding.scoreText.text = newScore.toString()
-        })
-        viewModel.currentTime.observe(viewLifecycleOwner, Observer { newTime ->
-            binding.timerText.text = DateUtils.formatElapsedTime(newTime)
-        })
+        binding.setLifecycleOwner (this)
 
         viewModel.eventGameFinish.observe(viewLifecycleOwner, Observer { hasFinished ->
             if (hasFinished) {
@@ -72,8 +69,15 @@ class GameFragment : Fragment() {
                 viewModel.onGameFinishComplete()
             }
         })
+        viewModel.eventBuzz.observe(viewLifecycleOwner, Observer { buzzType ->
+            if (buzzType != GameViewModel.BuzzType.NO_BUZZ) {
+                buzz(buzzType.pattern)
+                viewModel.onBuzzComplete()
+            }
+        })
 
-        updateWordText()
+
+
         return binding.root
 
     }
@@ -91,14 +95,22 @@ class GameFragment : Fragment() {
 
 
 
-    /** Methods for buttons presses **/
-
-
-    /** Methods for updating the UI **/
 
     private fun updateWordText() {
         binding.wordText.text = viewModel.word.value
 
+    }
+    private fun buzz(pattern: LongArray) {
+        val buzzer = activity?.getSystemService<Vibrator>()
+
+        buzzer?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                buzzer.vibrate(VibrationEffect.createWaveform(pattern, -1))
+            } else {
+                //deprecated in API 26
+                buzzer.vibrate(pattern, -1)
+            }
+        }
     }
 
 }
